@@ -1,5 +1,3 @@
-from ast import Delete
-from mimetypes import common_types
 import shutil
 import tempfile
 from django.test import TestCase, Client, override_settings
