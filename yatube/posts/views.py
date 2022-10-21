@@ -6,7 +6,7 @@ from .utils import paginator
 from django.contrib.auth.decorators import login_required
 
 
-@cache_page(20)
+@cache_page(20, key_prefix='index_page')
 def index(request):
     post_list = Post.objects.all()
     page_obj = paginator(request, post_list)
@@ -49,10 +49,11 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm()
+    comment = post.comments.all()
     context = {
         'post': post,
-        'comments': post.comments.all(),
-        'form': form
+        'form': form,
+        'comments': comment
     }
     return render(request, 'posts/post_detail.html', context)
 
@@ -119,10 +120,9 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
-    if (Follow.objects.filter(author=author, user=request.user).exists()
-            or request.user == author):
-        return redirect('posts:profile', username=username)
-    Follow.objects.create(author=author, user=request.user)
+    user = request.user
+    if user != author:
+        Follow.objects.get_or_create(author=author, user=request.user)
     return redirect('posts:profile', username=username)
 
 

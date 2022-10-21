@@ -47,6 +47,22 @@ class ViewsTests(TestCase):
             post=cls.post,
             text='Тестовый комментарий',
         )
+        cls.url_index = reverse('posts:index')
+        cls.url_create = reverse('posts:post_create')
+        cls.url_post_edit = reverse(
+            'posts:update_post', kwargs={'post_id': '1'})
+        cls.url_about_author = reverse('about:author')
+        cls.url_about_tech = reverse('about:tech')
+        cls.url_group = reverse(
+            'posts:group_list', kwargs={'slug': cls.group.slug})
+        cls.url_post_detail = reverse(
+            'posts:post_detail', kwargs={'post_id': '1'})
+        cls.url_profile = reverse(
+            'posts:profile', kwargs={'username': 'auth'})
+        cls.url_comment = reverse(
+            'posts:add_comment', kwargs={'post_id': '1'})
+        cls.utl_follow = reverse(
+            'posts:profile_follow', kwargs={'username': 'auth'})
 
     @classmethod
     def tearDownClass(cls):
@@ -63,18 +79,14 @@ class ViewsTests(TestCase):
 
     def test_pages_uses_correct_template(self):
         templates_pages_names = {
-            reverse('posts:index'): 'posts/index.html',
-            reverse('posts:group_list',
-                    kwargs={'slug': 'Тест-1'}): 'posts/group_list.html',
-            reverse('posts:profile',
-                    kwargs={'username': 'auth'}): 'posts/profile.html',
-            reverse('posts:post_detail',
-                    kwargs={'post_id': '1'}): 'posts/post_detail.html',
-            reverse('posts:update_post',
-                    kwargs={'post_id': '1'}): 'posts/create_post.html',
-            reverse('posts:post_create'): 'posts/create_post.html',
-            reverse('about:author'): 'about/author.html',
-            reverse('about:tech'): 'about/tech.html',
+            self.url_index: 'posts/index.html',
+            self.url_group: 'posts/group_list.html',
+            self.url_profile: 'posts/profile.html',
+            self.url_post_detail: 'posts/post_detail.html',
+            self.url_post_edit: 'posts/create_post.html',
+            self.url_create: 'posts/create_post.html',
+            self.url_about_author: 'about/author.html',
+            self.url_about_tech: 'about/tech.html',
         }
         for reverse_name, template in templates_pages_names.items():
             with self.subTest(reverse_name=reverse_name):
@@ -82,31 +94,27 @@ class ViewsTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def test_posts_index_page_show_correct_context(self):
-        response = self.authorized_client.get(reverse('posts:index'))
+        response = self.authorized_client.get(self.url_index)
         test_obj = response.context['page_obj'][0]
         self.assertEqual(test_obj, self.post)
 
     def test_posts_profile_page_show_correct_context(self):
-        response = self.authorized_client.get(reverse(
-            'posts:profile', kwargs={'username': 'auth'}))
+        response = self.authorized_client.get(self.url_profile)
         test_obj = response.context['page_obj'][0]
         self.assertEqual(test_obj, self.post)
 
     def test_posts_group_list_page_show_correct_context(self):
-        response = self.authorized_client.get(reverse(
-            'posts:group_list', kwargs={'slug': 'Тест-1'}))
+        response = self.authorized_client.get(self.url_group)
         test_obj = response.context['page_obj'][0]
         self.assertEqual(test_obj, self.post)
 
     def test_posts_detail_page_show_correct_context(self):
-        response = self.authorized_client.get(reverse(
-            'posts:post_detail', kwargs={'post_id': '1'}))
+        response = self.authorized_client.get(self.url_post_detail)
         test_obj = response.context['post']
         self.assertEqual(test_obj, self.post)
 
     def test_create_post_show_correct_context(self):
-        response = self.authorized_client.get(reverse(
-            'posts:post_create'))
+        response = self.authorized_client.get(self.url_create)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField}
@@ -116,8 +124,7 @@ class ViewsTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_edit_post_show_correct_context(self):
-        response = self.authorized_client.get(
-            reverse('posts:update_post', kwargs={'post_id': self.post.id}))
+        response = self.authorized_client.get(self.url_post_edit)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField}
@@ -128,14 +135,9 @@ class ViewsTests(TestCase):
 
     def test_new_post_is_demonstrated(self):
         pages_list = (
-            reverse('posts:index'),
-            reverse(
-                'posts:group_list', kwargs={'slug': self.group.slug}
-            ),
-            reverse(
-                'posts:profile',
-                kwargs={'username': self.post.author.username}
-            ),
+            self.url_index,
+            self.url_group,
+            self.url_profile,
         )
         for tested_page in pages_list:
             response = self.authorized_client.get(tested_page)
@@ -153,8 +155,7 @@ class ViewsTests(TestCase):
         self.assertEqual(0, len(posts))
 
     def test_new_comment_is_demonstrated(self):
-        response = self.guest_client.get(reverse(
-            'posts:post_detail', kwargs={'post_id': '1'}))
+        response = self.guest_client.get(self.url_post_detail)
         comment = response.context.get('comments')
         self.assertTrue(comment.filter(text='Тестовый комментарий').exists())
 
@@ -183,6 +184,32 @@ class ViewsTests(TestCase):
             'posts:follow_index'))
         new_post = response.context['page_obj']
         self.assertEqual(0, len(new_post))
+
+    def test_cache_index(self):
+        text = 'abc'
+        Post.objects.create(text=text, author=self.user)
+        self.authorized_client.get(reverse('posts:index'))
+        Post.objects.all().delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.assertIn(text, str(response.content))
+
+    def test_comment_create(self):
+        Post.objects.create(
+            author=self.user,
+            text='Тестовый пост',
+            group=self.group)
+        comment_form = {'text': 'Тестовый комментарий', }
+        response_guest = self.guest_client.post(reverse(
+            'posts:add_comment', kwargs={'post_id': 2}),
+            data=comment_form)
+        response_authorized_client = self.authorized_client.post(reverse(
+            'posts:add_comment', kwargs={'post_id': 2}),
+            data=comment_form)
+        self.assertEqual(response_guest.status_code, 302)
+        self.assertEqual(response_authorized_client.status_code, 302)
+        self.assertRedirects(
+            response_guest, '/auth/login/?next=/posts/2/comment/')
+        self.assertRedirects(response_authorized_client, '/posts/2/')
 
 
 PAGE_TEST_OFFSET = 5
