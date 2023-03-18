@@ -1,3 +1,20 @@
-# hw05_final
+#  Социальная сеть "Yatube"
 
-[![CI](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml)
+## Социальная сеть "Yatube" с авторизацией, персональными лентами, комментариями и подпиской на авторов
+
+- ### Функции:
+
+    - #### Создание учетной записи;
+    - #### Публикация постов с возможностью прикреплять изображение;
+    - #### Комментирование постов;
+    - #### Создание групп;
+    - #### Подписка на любимых авторов.
+
+- ### Использовал:
+
+    - #### Django;
+    - #### Работа с базой данных через Django ORM;
+    - #### Реализация пользовательского интерфейса и вёрстка страниц через HTML и CSS;
+    - #### Разработка тестов через Unittest.
+
+## Cтек: #python #Git #GitHub #VSCode #HTML #CSS #Django #Bootstrap #Unittest
